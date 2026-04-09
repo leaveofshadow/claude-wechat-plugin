@@ -119,7 +119,7 @@ Send messages to the Bot from your phone:
 ```
 Claude Code CLI
 ├── Skills (8 commands)
-├── Cron (1min polling)
+├── Cron (2min polling, hooks handle approvals at 3s)
 ├── Hooks (approval & notification)
 │   ├── PreToolUse  → tool-notify, plan-notify, ask-notify
 │   ├── PostToolUse → ask-notify
@@ -145,7 +145,7 @@ Runtime data is stored in `~/.claude/wechat-plugin/`:
 ## Notes
 
 - **One window at a time**: Only one Claude Code window should run WeChat polling. Use `/wx-off` before switching.
-- **Cron fires when idle**: Polling only runs when REPL is idle, won't interrupt operations.
+- **Cron fires when idle**: Polling only runs when REPL is idle, won't interrupt operations. Hooks handle approval replies independently at 3-second intervals.
 - **Approval timeouts**: Tool approval 2min, Plan approval 3min — auto-approve on timeout.
 - **Default: approval disabled**: `/wx-on` and `/wx-switch` default to no-approval mode.
 

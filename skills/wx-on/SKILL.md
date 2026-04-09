@@ -25,22 +25,12 @@ node "$CLAUDE_PLUGIN_ROOT/scripts/scan-projects.js"
 
 ### 3. 注册新 cron
 用 `CronCreate` 创建：
-- **cron**: `*/1 * * * *`（每分钟轮询）
+- **cron**: `*/2 * * * *`（每 2 分钟轮询，hooks 独立处理审批无需高频）
 - **recurring**: true
 - **durable**: true
 - **prompt**:
   ```
-  WeChat poll with pending-awareness.
-
-  STEP 1: Check for pending approvals first.
-  Read file ~/.claude/wechat-plugin/pending.json — if it exists and has a "type" field (approval, plan_approval, question), respond with exactly NO_MSG and stop. Do NOT poll WeChat. The hook is already polling and will handle the reply.
-
-  STEP 2: If NO pending file exists, poll WeChat:
-  Run: node "$CLAUDE_PLUGIN_ROOT/scripts/wechat-api.js" poll 5000
-  Parse the JSON result. If message_count === 0, respond with exactly NO_MSG.
-  If message_count > 0, read the active project from ~/.claude/wechat-plugin/projects.json. Then check the latest message:
-  - If it matches "切换 <project_key>", update the "active" field in projects.json and send WeChat confirmation.
-  - Otherwise, treat the latest message as the user's instruction and execute it in the context of the active project's workDir.
+  WX poll. If ~/.claude/wechat-plugin/pending.json has "type" field → say NO_MSG (hooks handle approvals at 3s). Else: run node "$CLAUDE_PLUGIN_ROOT/scripts/wechat-api.js" poll 5000 → if message_count=0 → say NO_MSG. If >0: read projects.json for active workDir, process latest msg as instruction. "切换 <key>" → switch active project.
   ```
 
 ### 4. 确保审批配置为免审状态
