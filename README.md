@@ -18,7 +18,25 @@ WeChat remote control plugin for Claude Code — send commands, approve actions,
 
 ## Installation
 
-### Step 1: Install mcp-wechat-server
+### Quick Install (recommended)
+
+```bash
+bash <(curl -sL https://raw.githubusercontent.com/leaveofshadow/claude-wechat-plugin/master/install.sh)
+```
+
+Or clone and run:
+
+```bash
+git clone https://github.com/leaveofshadow/claude-wechat-plugin.git
+cd claude-wechat-plugin && bash install.sh
+```
+
+### Manual Install
+
+<details>
+<summary>Click to expand</summary>
+
+#### Step 1: Install mcp-wechat-server
 
 Add the WeChat Bot MCP server to your Claude Code settings:
 
@@ -39,11 +57,13 @@ Or manually add to `~/.claude/settings.json`:
 }
 ```
 
-### Step 2: Install this plugin
+#### Step 2: Install this plugin
 
 ```bash
 claude plugin add --url https://github.com/leaveofshadow/claude-wechat-plugin
 ```
+
+</details>
 
 ## Quick Start
 
