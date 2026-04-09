@@ -1,0 +1,11 @@
+{
+  "name": "wechat-plugin",
+  "description": "WeChat remote control for Claude Code — send commands, approve actions, and switch projects via WeChat",
+  "version": "1.0.0",
+  "author": {
+    "name": "neal"
+  },
+  "license": "MIT",
+  "keywords": ["wechat", "remote", "approval", "notification", "mobile"],
+  "repository": "https://github.com/user/wechat-plugin"
+}
