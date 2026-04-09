@@ -12,10 +12,34 @@ WeChat remote control plugin for Claude Code — send commands, approve actions,
 ## Prerequisites
 
 - [Claude Code CLI](https://claude.ai/code) installed
+- [mcp-wechat-server](https://github.com/Howardzhangdqs/mcp-wechat-server) — WeChat Bot MCP Server (required for login & QR code)
 - WeChat account with access to a WeChat Bot (via ilinkai)
 - Node.js 18+
 
 ## Installation
+
+### Step 1: Install mcp-wechat-server
+
+Add the WeChat Bot MCP server to your Claude Code settings:
+
+```bash
+claude mcp add wechat -- npx -y mcp-wechat-server
+```
+
+Or manually add to `~/.claude/settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "wechat": {
+      "command": "npx",
+      "args": ["-y", "mcp-wechat-server"]
+    }
+  }
+}
+```
+
+### Step 2: Install this plugin
 
 ```bash
 claude plugin add --url https://github.com/leaveofshadow/claude-wechat-plugin
