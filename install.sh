@@ -132,7 +132,7 @@ fi
 echo ""
 
 # --- Create data directory ---
-echo "[4/5] Creating data directory..."
+echo "[4/6] Creating data directory..."
 mkdir -p "$DATA_DIR"
 
 # Write default config files if not exist
@@ -154,8 +154,90 @@ fi
 
 echo ""
 
+# --- Link scripts to data dir ---
+echo "[5/6] Linking scripts to data directory..."
+
+# Find the plugin source directory
+PLUGIN_SRC=""
+if [ "$PLUGIN_INSTALLED" = "true" ] && [ -d "$HOME/.claude/plugins/marketplaces/$MARKETPLACE_NAME" ]; then
+  PLUGIN_SRC="$HOME/.claude/plugins/marketplaces/$MARKETPLACE_NAME"
+fi
+if [ -z "$PLUGIN_SRC" ] && [ -d "$DATA_DIR/src" ]; then
+  PLUGIN_SRC="$DATA_DIR/src"
+fi
+# Search cache directories as last resort
+if [ -z "$PLUGIN_SRC" ]; then
+  for cached in "$HOME/.claude/plugins/cache/"*/"$PLUGIN_NAME"/*/; do
+    if [ -d "${cached}scripts" ]; then
+      PLUGIN_SRC="$cached"
+      break
+    fi
+  done
+fi
+
+if [ -n "$PLUGIN_SRC" ] && [ -d "$PLUGIN_SRC/scripts" ]; then
+  SCRIPTS_LINK="$DATA_DIR/scripts"
+  if [ -L "$SCRIPTS_LINK" ]; then
+    rm "$SCRIPTS_LINK"
+  elif [ -d "$SCRIPTS_LINK" ]; then
+    rm -rf "$SCRIPTS_LINK"
+  fi
+  ln -s "$PLUGIN_SRC/scripts" "$SCRIPTS_LINK"
+  echo "  Scripts linked: $SCRIPTS_LINK → $PLUGIN_SRC/scripts"
+else
+  echo "  WARNING: Could not find plugin scripts directory."
+  echo "  Skills that run scripts may not work."
+fi
+
+# --- Merge hooks into settings.json ---
+echo ""
+echo "  Registering hooks in settings.json..."
+
+if [ -n "$PLUGIN_SRC" ] && [ -f "$PLUGIN_SRC/hooks/hooks.json" ]; then
+  node -e "
+    const fs = require('fs');
+    const f = '$SETTINGS_FILE';
+    const pluginSrc = '$PLUGIN_SRC';
+    let cfg = {};
+    try { cfg = JSON.parse(fs.readFileSync(f, 'utf-8')); } catch {}
+
+    // Read plugin hooks
+    const pluginHooks = JSON.parse(fs.readFileSync(pluginSrc + '/hooks/hooks.json', 'utf-8'));
+    const hooksDef = pluginHooks.hooks || {};
+
+    // Replace \$CLAUDE_PLUGIN_ROOT with actual path in hook commands
+    function fixCmd(cmd) {
+      return cmd.replace(/\\\$CLAUDE_PLUGIN_ROOT/g, pluginSrc);
+    }
+
+    function fixHooks(list) {
+      if (!list) return list;
+      return list.map(h => ({
+        ...h,
+        hooks: h.hooks ? h.hooks.map(hh => ({
+          ...hh,
+          command: hh.command ? fixCmd(hh.command) : hh.command
+        })) : undefined
+      }));
+    }
+
+    // Merge hooks into settings
+    cfg.hooks = cfg.hooks || {};
+    for (const [event, entries] of Object.entries(hooksDef)) {
+      cfg.hooks[event] = fixHooks(entries);
+    }
+
+    fs.writeFileSync(f, JSON.stringify(cfg, null, 2));
+  "
+  echo "  Hooks registered in settings.json."
+else
+  echo "  WARNING: Could not find hooks/hooks.json. Hooks not registered."
+fi
+
+echo ""
+
 # --- Done ---
-echo "[5/5] Installation complete!"
+echo "[6/6] Installation complete!"
 echo ""
 echo "=== Next steps ==="
 echo "1. Restart Claude Code (or open a new session)"

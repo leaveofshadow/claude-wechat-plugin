@@ -18,13 +18,13 @@ cat ~/.mcp-wechat-server/account.json 2>/dev/null | head -5
 
 ### 2. 测试微信 API 连通性
 ```bash
-node "$CLAUDE_PLUGIN_ROOT/scripts/wechat-api.js" poll 5000
+node "~/.claude/wechat-plugin/scripts/wechat-api.js" poll 5000
 ```
 - 如果返回 JSON 且无报错，说明 API 正常
 - 如果报错 "Not logged in"，提示重新登录
 
 ### 3. 检查 Hook 配置状态
-读取 `C:/Users/newuser/.claude/settings.json`，检查以下 hook：
+读取 `~/.claude/settings.json`，检查以下 hook：
 - `PreToolUse → AskUserQuestion`（提问审批）：timeout 应为 125
 - `PreToolUse → ExitPlanMode`（Plan 审批）：timeout 应为 180
 - `PreToolUse → Bash|Edit|Write|Agent`（工具审批）：timeout 应为 125

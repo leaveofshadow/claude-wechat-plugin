@@ -18,7 +18,7 @@ description: 查看/扫描微信可切换的项目列表（自动从 ~/.claude/p
 ### 1. 自动扫描
 每次列出项目前，先运行扫描：
 ```bash
-node "$CLAUDE_PLUGIN_ROOT/scripts/scan-projects.js"
+node "~/.claude/wechat-plugin/scripts/scan-projects.js"
 ```
 
 ### 2. 显示项目列表

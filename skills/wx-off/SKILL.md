@@ -15,7 +15,7 @@ description: 断开微信连接（停止 cron 轮询，释放给其他窗口）
 
 ### 2. 发送微信通知
 ```bash
-node "$CLAUDE_PLUGIN_ROOT/scripts/wechat-api.js" send "微信已断开当前窗口。在新窗口运行 /wx-on 重新连接。"
+node "~/.claude/wechat-plugin/scripts/wechat-api.js" send "微信已断开当前窗口。在新窗口运行 /wx-on 重新连接。"
 ```
 
 ### 3. 输出提示

@@ -19,7 +19,7 @@ description: 连接微信到当前窗口（注册 cron 轮询）
 
 ### 2. 读取当前项目
 ```bash
-node "$CLAUDE_PLUGIN_ROOT/scripts/scan-projects.js"
+node "~/.claude/wechat-plugin/scripts/scan-projects.js"
 ```
 确认当前活跃项目是用户想要的。
 
@@ -30,7 +30,7 @@ node "$CLAUDE_PLUGIN_ROOT/scripts/scan-projects.js"
 - **durable**: true
 - **prompt**:
   ```
-  WX poll. If ~/.claude/wechat-plugin/pending.json has "type" field → say NO_MSG (hooks handle approvals at 3s). Else: run node "$CLAUDE_PLUGIN_ROOT/scripts/wechat-api.js" poll 5000 → if message_count=0 → say NO_MSG. If >0: read projects.json for active workDir, process latest msg as instruction. "切换 <key>" → switch active project.
+  WX poll. If ~/.claude/wechat-plugin/pending.json has "type" field → say NO_MSG (hooks handle approvals at 3s). Else: run node "~/.claude/wechat-plugin/scripts/wechat-api.js" poll 5000 → if message_count=0 → say NO_MSG. If >0: read projects.json for active workDir, process latest msg as instruction. "切换 <key>" → switch active project.
   ```
 
 ### 4. 确保审批配置为免审状态
@@ -41,7 +41,7 @@ node -e "const fs=require('fs');const f='~/.claude/wechat-plugin/approval.json';
 
 ### 5. 发送微信确认
 ```bash
-node "$CLAUDE_PLUGIN_ROOT/scripts/wechat-api.js" send "[ProjectName] 微信已连接。发送指令即可操作。"
+node "~/.claude/wechat-plugin/scripts/wechat-api.js" send "[ProjectName] 微信已连接。发送指令即可操作。"
 ```
 
 ### 5. 输出确认
