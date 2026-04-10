@@ -8,14 +8,46 @@ MCP_NAME="wechat"
 SETTINGS_FILE="$HOME/.claude/settings.json"
 DATA_DIR="$HOME/.claude/wechat-plugin"
 
+# --- Helper: ask user yes/no ---
+confirm() {
+  local msg="$1"
+  while true; do
+    echo ""
+    echo "  >>> $msg"
+    read -r -p "  确认继续? [y/N] " answer
+    case "$answer" in
+      [yY][eE][sS]|[yY]) return 0 ;;
+      *) echo "  跳过此步骤。"; return 1 ;;
+    esac
+  done
+}
+
 echo "=== claude-wechat-plugin installer ==="
 echo ""
+echo "本脚本将执行以下操作:"
+echo "  1. 检查前置条件 (Node.js 18+, Claude Code CLI)"
+echo "  2. 在 settings.json 中配置 MCP Server (mcp-wechat-server)"
+echo "  3. 安装插件 (marketplace 或 fallback)"
+echo "  4. 创建数据目录 ~/.claude/wechat-plugin/"
+echo "  5. 链接 scripts/ 并注册 hooks 到 settings.json"
+echo ""
+echo "将修改的文件:"
+echo "  - $SETTINGS_FILE (添加 MCP Server + Hooks)"
+echo "  - ~/.claude/skills/ (添加 8 个技能符号链接)"
+echo "  - $DATA_DIR/ (创建数据目录)"
+echo ""
 
-# --- Check prerequisites ---
-echo "[1/5] Checking prerequisites..."
+if ! confirm "开始安装?"; then
+  echo "安装已取消。"
+  exit 0
+fi
+
+# --- Step 1: Check prerequisites ---
+echo ""
+echo "[1/6] 检查前置条件..."
 
 if ! command -v node &>/dev/null; then
-  echo "ERROR: Node.js is required but not found. Install Node.js 18+ first."
+  echo "ERROR: Node.js 未找到，需要 Node.js 18+。"
   exit 1
 fi
 
@@ -27,135 +59,134 @@ fi
 echo "  Node.js $(node -v) OK"
 
 if ! command -v claude &>/dev/null; then
-  echo "ERROR: Claude Code CLI not found. Install from https://claude.ai/code"
+  echo "ERROR: Claude Code CLI 未找到，请先安装 https://claude.ai/code"
   exit 1
 fi
 echo "  Claude Code CLI OK"
 
+# --- Step 2: Configure MCP Server ---
 echo ""
-
-# --- Configure mcp-wechat-server ---
-echo "[2/5] Configuring mcp-wechat-server..."
+echo "[2/6] 配置 MCP Server (mcp-wechat-server)..."
 
 mkdir -p "$(dirname "$SETTINGS_FILE")"
 
 NEED_MCP=true
 if [ -f "$SETTINGS_FILE" ]; then
   if grep -q "\"$MCP_NAME\"" "$SETTINGS_FILE" 2>/dev/null; then
-    echo "  MCP server '$MCP_NAME' already configured, skipping."
+    echo "  MCP server '$MCP_NAME' 已配置，跳过。"
     NEED_MCP=false
   fi
 fi
 
 if $NEED_MCP; then
-  # Try claude mcp add first
-  if claude mcp add "$MCP_NAME" -- npx -y mcp-wechat-server 2>/dev/null; then
-    echo "  Added via 'claude mcp add'."
-  else
-    # Fallback: merge into settings.json
-    echo "  'claude mcp add' not available, writing settings.json directly..."
-    node -e "
-      const fs = require('fs');
-      const f = '$SETTINGS_FILE';
-      let cfg = {};
-      try { cfg = JSON.parse(fs.readFileSync(f, 'utf-8')); } catch {}
-      cfg.mcpServers = cfg.mcpServers || {};
-      cfg.mcpServers['$MCP_NAME'] = { command: 'npx', args: ['-y', 'mcp-wechat-server'] };
-      fs.writeFileSync(f, JSON.stringify(cfg, null, 2));
-    "
-    echo "  Written to settings.json."
+  echo ""
+  echo "  将在 settings.json 中添加:"
+  echo "    MCP Server: $MCP_NAME"
+  echo "    Command: npx -y mcp-wechat-server"
+  if confirm "写入 MCP Server 配置到 settings.json?"; then
+    if claude mcp add "$MCP_NAME" -- npx -y mcp-wechat-server 2>/dev/null; then
+      echo "  已通过 'claude mcp add' 添加。"
+    else
+      node -e "
+        const fs = require('fs');
+        const f = '$SETTINGS_FILE';
+        let cfg = {};
+        try { cfg = JSON.parse(fs.readFileSync(f, 'utf-8')); } catch {}
+        cfg.mcpServers = cfg.mcpServers || {};
+        cfg.mcpServers['$MCP_NAME'] = { command: 'npx', args: ['-y', 'mcp-wechat-server'] };
+        fs.writeFileSync(f, JSON.stringify(cfg, null, 2));
+      "
+      echo "  已写入 settings.json。"
+    fi
   fi
 fi
 
+# --- Step 3: Install plugin ---
 echo ""
-
-# --- Install plugin ---
-echo "[3/5] Installing claude-wechat-plugin..."
+echo "[3/6] 安装插件..."
 
 PLUGIN_INSTALLED=false
 
-# Method 1: Official plugin system (marketplace + install)
 if command -v claude &>/dev/null; then
-  echo "  Adding plugin marketplace..."
   if claude plugin marketplace add "$PLUGIN_URL" 2>/dev/null; then
-    echo "  Marketplace added."
+    echo "  Marketplace 已添加。"
     if claude plugin install "$PLUGIN_NAME" 2>/dev/null; then
-      echo "  Plugin installed via 'claude plugin install'."
+      echo "  通过官方插件系统安装成功。"
       PLUGIN_INSTALLED=true
     else
-      echo "  'claude plugin install' failed, trying fallback..."
+      echo "  'claude plugin install' 失败，尝试回退方案..."
     fi
   else
-    echo "  'claude plugin marketplace add' failed, trying fallback..."
+    echo "  'claude plugin marketplace add' 失败，尝试回退方案..."
   fi
 fi
 
-# Method 2: Fallback — clone repo and symlink skills into ~/.claude/skills/
 if [ "$PLUGIN_INSTALLED" = "false" ]; then
-  echo "  Falling back to manual skill installation..."
-  PLUGIN_SRC_DIR="$DATA_DIR/src"
-  SKILLS_DIR="$HOME/.claude/skills"
+  echo ""
+  echo "  回退方案: 将仓库克隆到 $DATA_DIR/src/"
+  echo "  并将技能符号链接到 ~/.claude/skills/"
+  if confirm "执行克隆和技能安装?"; then
+    PLUGIN_SRC_DIR="$DATA_DIR/src"
+    SKILLS_DIR="$HOME/.claude/skills"
 
-  if [ -d "$PLUGIN_SRC_DIR" ]; then
-    echo "  Updating existing clone..."
-    git -C "$PLUGIN_SRC_DIR" pull --ff-only 2>/dev/null || {
-      echo "  WARNING: Could not update clone, using existing version."
-    }
-  else
-    echo "  Cloning plugin repository..."
-    if git clone --depth 1 "$PLUGIN_URL" "$PLUGIN_SRC_DIR" 2>/dev/null; then
-      echo "  Repository cloned."
+    if [ -d "$PLUGIN_SRC_DIR" ]; then
+      echo "  更新已有克隆..."
+      git -C "$PLUGIN_SRC_DIR" pull --ff-only 2>/dev/null || {
+        echo "  WARNING: 更新失败，使用已有版本。"
+      }
     else
-      echo "  ERROR: Failed to clone repository. Skills will not be available."
-    fi
-  fi
-
-  if [ -d "$PLUGIN_SRC_DIR/skills" ]; then
-    mkdir -p "$SKILLS_DIR"
-    SKILL_COUNT=0
-    for skill_dir in "$PLUGIN_SRC_DIR"/skills/*/; do
-      skill_name=$(basename "$skill_dir")
-      target="$SKILLS_DIR/$skill_name"
-      if [ -L "$target" ]; then
-        rm "$target"
-      elif [ -d "$target" ]; then
-        echo "  WARNING: $skill_name already exists in skills/, skipping."
-        continue
+      echo "  克隆仓库..."
+      if git clone --depth 1 "$PLUGIN_URL" "$PLUGIN_SRC_DIR" 2>/dev/null; then
+        echo "  克隆完成。"
+      else
+        echo "  ERROR: 克隆失败，技能将不可用。"
       fi
-      ln -s "$skill_dir" "$target"
-      SKILL_COUNT=$((SKILL_COUNT + 1))
-    done
-    echo "  Installed $SKILL_COUNT skills into ~/.claude/skills/"
+    fi
+
+    if [ -d "$PLUGIN_SRC_DIR/skills" ]; then
+      mkdir -p "$SKILLS_DIR"
+      SKILL_COUNT=0
+      for skill_dir in "$PLUGIN_SRC_DIR"/skills/*/; do
+        skill_name=$(basename "$skill_dir")
+        target="$SKILLS_DIR/$skill_name"
+        if [ -L "$target" ]; then
+          rm "$target"
+        elif [ -d "$target" ]; then
+          echo "  WARNING: $skill_name 已存在，跳过。"
+          continue
+        fi
+        ln -s "$skill_dir" "$target"
+        SKILL_COUNT=$((SKILL_COUNT + 1))
+      done
+      echo "  已安装 $SKILL_COUNT 个技能到 ~/.claude/skills/"
+    fi
   fi
 fi
 
+# --- Step 4: Create data directory ---
 echo ""
-
-# --- Create data directory ---
-echo "[4/6] Creating data directory..."
+echo "[4/6] 创建数据目录..."
 mkdir -p "$DATA_DIR"
 
-# Write default config files if not exist
 APPROVAL_FILE="$DATA_DIR/approval.json"
 if [ ! -f "$APPROVAL_FILE" ]; then
   echo '{"enabled":false,"tools":["Bash","Edit","Write","Agent"]}' > "$APPROVAL_FILE"
-  echo "  Created approval.json (approval disabled by default)."
+  echo "  创建 approval.json (默认免审批)。"
 else
-  echo "  approval.json already exists, keeping current config."
+  echo "  approval.json 已存在，保留。"
 fi
 
 PROJECTS_FILE="$DATA_DIR/projects.json"
 if [ ! -f "$PROJECTS_FILE" ]; then
   echo '{"active":"","projects":{}}' > "$PROJECTS_FILE"
-  echo "  Created projects.json."
+  echo "  创建 projects.json。"
 else
-  echo "  projects.json already exists, keeping current config."
+  echo "  projects.json 已存在，保留。"
 fi
 
+# --- Step 5: Link scripts & register hooks ---
 echo ""
-
-# --- Link scripts to data dir ---
-echo "[5/6] Linking scripts to data directory..."
+echo "[5/6] 链接脚本并注册 Hooks..."
 
 # Find the plugin source directory
 PLUGIN_SRC=""
@@ -165,7 +196,6 @@ fi
 if [ -z "$PLUGIN_SRC" ] && [ -d "$DATA_DIR/src" ]; then
   PLUGIN_SRC="$DATA_DIR/src"
 fi
-# Search cache directories as last resort
 if [ -z "$PLUGIN_SRC" ]; then
   for cached in "$HOME/.claude/plugins/cache/"*/"$PLUGIN_NAME"/*/; do
     if [ -d "${cached}scripts" ]; then
@@ -183,66 +213,68 @@ if [ -n "$PLUGIN_SRC" ] && [ -d "$PLUGIN_SRC/scripts" ]; then
     rm -rf "$SCRIPTS_LINK"
   fi
   ln -s "$PLUGIN_SRC/scripts" "$SCRIPTS_LINK"
-  echo "  Scripts linked: $SCRIPTS_LINK → $PLUGIN_SRC/scripts"
+  echo "  Scripts 链接: $SCRIPTS_LINK → $PLUGIN_SRC/scripts"
 else
-  echo "  WARNING: Could not find plugin scripts directory."
-  echo "  Skills that run scripts may not work."
+  echo "  WARNING: 未找到插件 scripts 目录，部分技能可能不可用。"
 fi
 
-# --- Merge hooks into settings.json ---
-echo ""
-echo "  Registering hooks in settings.json..."
-
+# Register hooks into settings.json
 if [ -n "$PLUGIN_SRC" ] && [ -f "$PLUGIN_SRC/hooks/hooks.json" ]; then
-  node -e "
-    const fs = require('fs');
-    const f = '$SETTINGS_FILE';
-    const pluginSrc = '$PLUGIN_SRC';
-    let cfg = {};
-    try { cfg = JSON.parse(fs.readFileSync(f, 'utf-8')); } catch {}
+  echo ""
+  echo "  将在 settings.json 中注册以下 Hooks:"
+  echo "    - PreToolUse → AskUserQuestion (提问审批)"
+  echo "    - PreToolUse → ExitPlanMode (方案审批)"
+  echo "    - PreToolUse → Bash|Edit|Write|Agent (工具审批)"
+  echo "    - PostToolUse → AskUserQuestion (提问确认)"
+  echo "    - Stop (完成通知)"
+  if confirm "写入 Hooks 配置到 settings.json?"; then
+    node -e "
+      const fs = require('fs');
+      const f = '$SETTINGS_FILE';
+      const pluginSrc = '$PLUGIN_SRC';
+      let cfg = {};
+      try { cfg = JSON.parse(fs.readFileSync(f, 'utf-8')); } catch {}
 
-    // Read plugin hooks
-    const pluginHooks = JSON.parse(fs.readFileSync(pluginSrc + '/hooks/hooks.json', 'utf-8'));
-    const hooksDef = pluginHooks.hooks || {};
+      const pluginHooks = JSON.parse(fs.readFileSync(pluginSrc + '/hooks/hooks.json', 'utf-8'));
+      const hooksDef = pluginHooks.hooks || {};
 
-    // Replace \$CLAUDE_PLUGIN_ROOT with actual path in hook commands
-    function fixCmd(cmd) {
-      return cmd.replace(/\\\$CLAUDE_PLUGIN_ROOT/g, pluginSrc);
-    }
+      function fixCmd(cmd) {
+        return cmd.replace(/\\\$CLAUDE_PLUGIN_ROOT/g, pluginSrc);
+      }
 
-    function fixHooks(list) {
-      if (!list) return list;
-      return list.map(h => ({
-        ...h,
-        hooks: h.hooks ? h.hooks.map(hh => ({
-          ...hh,
-          command: hh.command ? fixCmd(hh.command) : hh.command
-        })) : undefined
-      }));
-    }
+      function fixHooks(list) {
+        if (!list) return list;
+        return list.map(h => ({
+          ...h,
+          hooks: h.hooks ? h.hooks.map(hh => ({
+            ...hh,
+            command: hh.command ? fixCmd(hh.command) : hh.command
+          })) : undefined
+        }));
+      }
 
-    // Merge hooks into settings
-    cfg.hooks = cfg.hooks || {};
-    for (const [event, entries] of Object.entries(hooksDef)) {
-      cfg.hooks[event] = fixHooks(entries);
-    }
+      cfg.hooks = cfg.hooks || {};
+      for (const [event, entries] of Object.entries(hooksDef)) {
+        cfg.hooks[event] = fixHooks(entries);
+      }
 
-    fs.writeFileSync(f, JSON.stringify(cfg, null, 2));
-  "
-  echo "  Hooks registered in settings.json."
+      fs.writeFileSync(f, JSON.stringify(cfg, null, 2));
+    "
+    echo "  Hooks 已注册到 settings.json。"
+  fi
 else
-  echo "  WARNING: Could not find hooks/hooks.json. Hooks not registered."
+  echo "  WARNING: 未找到 hooks/hooks.json，Hooks 未注册。"
 fi
-
-echo ""
 
 # --- Done ---
-echo "[6/6] Installation complete!"
 echo ""
-echo "=== Next steps ==="
-echo "1. Restart Claude Code (or open a new session)"
-echo "2. Run:  /wx-login"
-echo "3. Scan QR code with WeChat"
-echo "4. Run:  /wx-on"
+echo "[6/6] 安装完成!"
 echo ""
-echo "For more info: https://github.com/leaveofshadow/claude-wechat-plugin"
+echo "=== 下一步 ==="
+echo "1. 重启 Claude Code (或打开新会话)"
+echo "2. 运行: /wx-login"
+echo "3. 用微信扫码登录"
+echo "4. 运行: /wx-on"
+echo ""
+echo "卸载: bash uninstall.sh"
+echo "文档: https://github.com/leaveofshadow/claude-wechat-plugin"
