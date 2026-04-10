@@ -40,7 +40,7 @@ rm -f ~/.mcp-wechat-server/state.json
 ### 6. 验证登录
 登录成功后，发送测试消息确认：
 ```bash
-node "~/.claude/wechat-plugin/scripts/wechat-api.js" send "微信 Bot 重新登录成功 ✓"
+node "$HOME/.claude/wechat-plugin/scripts/wechat-api.js" send "微信 Bot 重新登录成功 ✓"
 ```
 
 ### 7. 重启 Cron（如需要）

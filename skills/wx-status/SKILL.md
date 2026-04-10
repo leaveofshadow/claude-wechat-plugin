@@ -18,7 +18,7 @@ cat ~/.mcp-wechat-server/account.json 2>/dev/null | head -5
 
 ### 2. 测试微信 API 连通性
 ```bash
-node "~/.claude/wechat-plugin/scripts/wechat-api.js" poll 5000
+node "$HOME/.claude/wechat-plugin/scripts/wechat-api.js" poll 5000
 ```
 - 如果返回 JSON 且无报错，说明 API 正常
 - 如果报错 "Not logged in"，提示重新登录
