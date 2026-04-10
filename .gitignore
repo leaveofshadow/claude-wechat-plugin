@@ -1,5 +1,6 @@
 node_modules/
 data/
 .claude/
+.omc/
 *.log
 .DS_Store
