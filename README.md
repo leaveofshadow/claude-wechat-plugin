@@ -148,7 +148,7 @@ cd claude-wechat-plugin && bash uninstall.sh
 
 交给 Claude code 处理。
 
-## 使用场景
+## 通过手机微信远程遥控Claude Code的使用场景
 
 ### 场景一：单项目开发（常用）
 
@@ -178,6 +178,8 @@ cd project-a && claude
 切换后微信消息的指令会在 project-b 的工作目录下执行。
 
 `/wx-projects` 查看所有可用项目，`/wx-status` 查看当前连接状态。
+
+** 注意：** /wx-switch 经常切换项目，可能会导致项目上下文污染，不建议经常使用。
 
 ### 场景三：审批控制
 
