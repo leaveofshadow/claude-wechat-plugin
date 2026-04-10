@@ -72,6 +72,18 @@ function writeEndTurnPending() {
 
 const PROJECTS_FILE = path.join(DATA_DIR, "projects.json");
 
+function isActiveProject(cwd) {
+  try {
+    const cfg = JSON.parse(fs.readFileSync(PROJECTS_FILE, "utf-8"));
+    const active = cfg.active;
+    const project = cfg.projects && cfg.projects[active];
+    if (!project || !project.workDir) return false;
+    const normalize = (p) => p.replace(/\\/g, "/").toLowerCase().replace(/\/$/, "");
+    return normalize(cwd) === normalize(project.workDir);
+  } catch {}
+  return false;
+}
+
 function getProjectPrefix() {
   try {
     const cfg = JSON.parse(fs.readFileSync(PROJECTS_FILE, "utf-8"));
@@ -92,6 +104,9 @@ function debugLog(msg) {
 }
 
 async function main() {
+  // Only send notifications for the active project session (the one bound via /wx-on)
+  if (!isActiveProject(process.cwd())) return;
+
   // Read stdin (hook input from Claude Code)
   let input = "";
   const chunks = [];
