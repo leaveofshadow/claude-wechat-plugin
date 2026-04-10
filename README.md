@@ -59,8 +59,18 @@ Or manually add to `~/.claude/settings.json`:
 
 #### Step 2: Install this plugin
 
+Via official plugin system:
+
 ```bash
-claude plugin add --url https://github.com/leaveofshadow/claude-wechat-plugin
+claude plugin marketplace add https://github.com/leaveofshadow/claude-wechat-plugin
+claude plugin install wechat-plugin
+```
+
+Or manually clone and symlink skills:
+
+```bash
+git clone https://github.com/leaveofshadow/claude-wechat-plugin.git ~/.claude/wechat-plugin/src
+ln -s ~/.claude/wechat-plugin/src/skills/* ~/.claude/skills/
 ```
 
 </details>

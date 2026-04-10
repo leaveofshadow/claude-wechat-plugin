@@ -1,0 +1,23 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "wechat-plugin-marketplace",
+  "description": "WeChat remote control for Claude Code — send commands, approve actions, and switch projects via WeChat",
+  "owner": {
+    "name": "neal"
+  },
+  "plugins": [
+    {
+      "name": "wechat-plugin",
+      "description": "WeChat remote control for Claude Code — send commands, approve actions, and switch projects via WeChat",
+      "version": "1.0.0",
+      "author": {
+        "name": "neal"
+      },
+      "source": "./",
+      "category": "communication",
+      "homepage": "https://github.com/leaveofshadow/claude-wechat-plugin",
+      "tags": ["wechat", "remote", "approval", "notification", "mobile"]
+    }
+  ],
+  "version": "1.0.0"
+}

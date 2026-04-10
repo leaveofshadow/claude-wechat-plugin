@@ -2,6 +2,8 @@
 set -euo pipefail
 
 PLUGIN_URL="https://github.com/leaveofshadow/claude-wechat-plugin"
+MARKETPLACE_NAME="wechat-plugin-marketplace"
+PLUGIN_NAME="wechat-plugin"
 MCP_NAME="wechat"
 SETTINGS_FILE="$HOME/.claude/settings.json"
 DATA_DIR="$HOME/.claude/wechat-plugin"
@@ -70,13 +72,61 @@ echo ""
 # --- Install plugin ---
 echo "[3/5] Installing claude-wechat-plugin..."
 
+PLUGIN_INSTALLED=false
+
+# Method 1: Official plugin system (marketplace + install)
 if command -v claude &>/dev/null; then
-  claude plugin add --url "$PLUGIN_URL" 2>/dev/null && echo "  Plugin installed via 'claude plugin add'." || {
-    echo "  Could not install via CLI. Install manually:"
-    echo "    claude plugin add --url $PLUGIN_URL"
-  }
-else
-  echo "  Install manually: claude plugin add --url $PLUGIN_URL"
+  echo "  Adding plugin marketplace..."
+  if claude plugin marketplace add "$PLUGIN_URL" 2>/dev/null; then
+    echo "  Marketplace added."
+    if claude plugin install "$PLUGIN_NAME" 2>/dev/null; then
+      echo "  Plugin installed via 'claude plugin install'."
+      PLUGIN_INSTALLED=true
+    else
+      echo "  'claude plugin install' failed, trying fallback..."
+    fi
+  else
+    echo "  'claude plugin marketplace add' failed, trying fallback..."
+  fi
+fi
+
+# Method 2: Fallback — clone repo and symlink skills into ~/.claude/skills/
+if [ "$PLUGIN_INSTALLED" = "false" ]; then
+  echo "  Falling back to manual skill installation..."
+  PLUGIN_SRC_DIR="$DATA_DIR/src"
+  SKILLS_DIR="$HOME/.claude/skills"
+
+  if [ -d "$PLUGIN_SRC_DIR" ]; then
+    echo "  Updating existing clone..."
+    git -C "$PLUGIN_SRC_DIR" pull --ff-only 2>/dev/null || {
+      echo "  WARNING: Could not update clone, using existing version."
+    }
+  else
+    echo "  Cloning plugin repository..."
+    if git clone --depth 1 "$PLUGIN_URL" "$PLUGIN_SRC_DIR" 2>/dev/null; then
+      echo "  Repository cloned."
+    else
+      echo "  ERROR: Failed to clone repository. Skills will not be available."
+    fi
+  fi
+
+  if [ -d "$PLUGIN_SRC_DIR/skills" ]; then
+    mkdir -p "$SKILLS_DIR"
+    SKILL_COUNT=0
+    for skill_dir in "$PLUGIN_SRC_DIR"/skills/*/; do
+      skill_name=$(basename "$skill_dir")
+      target="$SKILLS_DIR/$skill_name"
+      if [ -L "$target" ]; then
+        rm "$target"
+      elif [ -d "$target" ]; then
+        echo "  WARNING: $skill_name already exists in skills/, skipping."
+        continue
+      fi
+      ln -s "$skill_dir" "$target"
+      SKILL_COUNT=$((SKILL_COUNT + 1))
+    done
+    echo "  Installed $SKILL_COUNT skills into ~/.claude/skills/"
+  fi
 fi
 
 echo ""
