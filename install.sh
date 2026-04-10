@@ -253,9 +253,20 @@ if [ -n "$PLUGIN_SRC" ] && [ -f "$PLUGIN_SRC/hooks/hooks.json" ]; then
         }));
       }
 
+      // Merge: remove old wechat-plugin hooks first, then append new ones
       cfg.hooks = cfg.hooks || {};
-      for (const [event, entries] of Object.entries(hooksDef)) {
-        cfg.hooks[event] = fixHooks(entries);
+      for (const [event, newEntries] of Object.entries(hooksDef)) {
+        // Remove any existing wechat-plugin hook entries for this event
+        if (Array.isArray(cfg.hooks[event])) {
+          cfg.hooks[event] = cfg.hooks[event].filter(e => {
+            const cmds = (e.hooks || []).map(h => h.command || '').join(' ');
+            return !cmds.includes('wechat-plugin/scripts') && !cmds.includes('wechat-api.js');
+          });
+        } else {
+          cfg.hooks[event] = [];
+        }
+        // Append new hooks
+        cfg.hooks[event] = cfg.hooks[event].concat(fixHooks(newEntries));
       }
 
       fs.writeFileSync(f, JSON.stringify(cfg, null, 2));
