@@ -17,10 +17,43 @@ description: 连接微信到当前窗口（注册 cron 轮询）
 调用 `CronList`，检查是否已有微信轮询 cron。
 如果有，先调用 `CronDelete` 删除（可能是旧窗口的残留）。
 
-### 2. 读取当前项目
+### 2. 扫描并注册当前项目
 ```bash
 node "$HOME/.claude/wechat-plugin/scripts/scan-projects.js"
 ```
+扫描完成后，检查 `~/.claude/wechat-plugin/projects.json` 中的 `active` 字段：
+- 如果 `active` 为空或当前 CWD 不是活跃项目，**必须**将当前 CWD 注册为活跃项目
+- 读取 projects.json，找到 `workDir` 与当前 CWD 匹配的项目 key
+- 如果没找到匹配项，创建一个新条目：
+
+```bash
+node -e "
+  const fs = require('fs');
+  const path = require('path');
+  const f = path.join(require('os').homedir(), '.claude', 'wechat-plugin', 'projects.json');
+  let cfg = { active: '', projects: {} };
+  try { cfg = JSON.parse(fs.readFileSync(f, 'utf-8')); } catch {}
+  const cwd = process.cwd();
+  const normalize = p => p.replace(/\\\\/g, '/').toLowerCase().replace(/\\/+$/, '');
+  const normCwd = normalize(cwd);
+  // Find matching project
+  let found = null;
+  for (const [key, proj] of Object.entries(cfg.projects)) {
+    if (normalize(proj.workDir) === normCwd) { found = key; break; }
+  }
+  if (!found) {
+    // Create new entry from CWD
+    const segs = cwd.replace(/\\\\/g, '/').split('/').filter(Boolean);
+    const name = segs[segs.length - 1] || 'project';
+    found = name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+    cfg.projects[found] = { name, workDir: cwd, description: '' };
+  }
+  cfg.active = found;
+  fs.writeFileSync(f, JSON.stringify(cfg, null, 2));
+  console.log('Active project: ' + found + ' (' + cwd + ')');
+"
+```
+
 确认当前活跃项目是用户想要的。
 
 ### 3. 注册新 cron

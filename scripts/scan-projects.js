@@ -7,12 +7,17 @@ const fs = require("fs");
 const path = require("path");
 const os = require("os");
 
+const DATA_DIR = path.join(
+  os.homedir(),
+  ".claude",
+  "wechat-plugin"
+);
 const PROJECTS_DIR = path.join(
   os.homedir(),
   ".claude",
   "projects"
 );
-const OUTPUT_FILE = path.join(__dirname, "..", "data", "projects.json");
+const OUTPUT_FILE = path.join(DATA_DIR, "projects.json");
 const DEFAULT_RECENT_DAYS = 30;
 
 const recentDays = parseInt(
